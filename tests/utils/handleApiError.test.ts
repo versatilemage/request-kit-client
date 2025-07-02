@@ -5,7 +5,7 @@ import { HTTP_STATUS } from '../../src/types/statusCodes';
 describe('handleApiError', () => {
   it('calls onUnauthorized on 401 status', () => {
     const mockCallback = vi.fn();
-
+    
     const error = {
       isAxiosError: true,
       response: {

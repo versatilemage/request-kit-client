@@ -1,5 +1,8 @@
 // src/types/index.ts
 
+import { AuthServiceDefinition } from "../services/auth";
+import { UserServiceDefinition } from "../services/user";
+
 export interface LoginRequest {
   email: string;
   password: string;
@@ -35,15 +38,8 @@ export interface NormalizedError {
 
 // Routes can be overridden during client creation
 export interface ApiRoutes {
-  auth?: {
-    login?: string;
-    logout?: string;
-    refresh?: string;
-  };
-  user?: {
-    profile?: string;
-    update?: string;
-  };
+  auth?: AuthServiceDefinition;
+  user?: UserServiceDefinition;
 }
 
 export interface WrappedHttp {

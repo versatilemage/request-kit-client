@@ -1,39 +1,11 @@
-import type { WrappedHttp, NormalizedError } from "../../src/types";
+// test/mock/mockHttp.ts
 import { vi } from "vitest";
 
-export function createMockHttp(): WrappedHttp {
-  const get: WrappedHttp["get"] = vi.fn((url, _options) =>
-    Promise.resolve({
-      data: { foo: "bar" } as any,
-      error: null,
-    })
-  );
-
-  const post: WrappedHttp["post"] = vi.fn((url, _body, _options) =>
-    Promise.resolve({
-      data: { id: 1 } as any,
-      error: null,
-    })
-  );
-
-  const put: WrappedHttp["put"] = vi.fn((url, _body, _options) =>
-    Promise.resolve({
-      data: { success: true } as any,
-      error: null,
-    })
-  );
-
-  const del: WrappedHttp["delete"] = vi.fn((url, _options) =>
-    Promise.resolve({
-      data: { deleted: true } as any,
-      error: null,
-    })
-  );
-
+export function createMockHttp() {
   return {
-    get,
-    post,
-    put,
-    delete: del,
+    get: vi.fn().mockResolvedValue({ data: { foo: "bar" }, error: null }),
+    post: vi.fn().mockResolvedValue({ data: { id: 1 }, error: null }),
+    put: vi.fn().mockResolvedValue({ data: { success: true }, error: null }),
+    delete: vi.fn().mockResolvedValue({ data: { deleted: true }, error: null }),
   };
 }
