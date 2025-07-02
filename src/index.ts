@@ -1,9 +1,11 @@
 import { createHttpClient } from "./http/client";
 import { createWrappedHttpClient } from "./http/wrappedHttpClient";
+
 import { createAuthService } from "./services/auth";
+import { createDefaultAuthService } from "./services/createDefaultAuthService";
+
 import { createUserService } from "./services/user";
-import { defaultAuthRoutes } from "./routes/authRoutes";
-import { defaultUserRoutes } from "./routes/userRoutes";
+import { createDefaultUserService } from "./services/createDefaultUserService";
 
 import type {
   ApiRoutes,
@@ -29,19 +31,19 @@ export const createApiClient = ({
   const axiosInstance = createHttpClient(baseUrl, getToken);
   const wrappedHttp = createWrappedHttpClient(axiosInstance);
 
-  const routes: ApiRoutes = {
-    auth: { ...defaultAuthRoutes, ...routeOverrides?.auth },
-    user: { ...defaultUserRoutes, ...routeOverrides?.user },
-  };
-
   return {
-    auth: createAuthService(wrappedHttp, routes.auth),
-    user: createUserService(wrappedHttp, routes.user),
-    http: wrappedHttp, // optional: helpful for custom service or fallback calls
+    auth: routeOverrides?.auth
+      ? createAuthService(wrappedHttp, routeOverrides.auth)
+      : createDefaultAuthService(wrappedHttp),
+
+    user: routeOverrides?.user
+      ? createUserService(wrappedHttp, routeOverrides.user)
+      : createDefaultUserService(wrappedHttp),
+
+    http: wrappedHttp,
   };
 };
 
-// Re-exports
 export { createCustomService } from "./services/createCustomService";
 export type {
   ApiRoutes,

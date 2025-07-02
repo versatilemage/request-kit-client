@@ -1,39 +1,48 @@
 # 🚀 Request Kit Client
 
-A powerful, TypeScript-first API client SDK for authentication, user profile management, and custom HTTP services — built with Axios and clean developer ergonomics.
+A flexible, TypeScript-first API client SDK that simplifies data fetching and HTTP service structure in modern frontend applications.
 
-**🌐 [View Landing Page](https://request-kit-client-landing-datk.vercel.app/)**
+\*\*🌐 \*\*[**View Landing Page**](https://request-kit-client-landing-datk.vercel.app/)
 
-Ideal for any frontend app that needs:
-
-* Modular API services (auth, user, etc.)
-* Token injection
-* Type-safe request and response handling
-* Custom service definitions
-* Built-in caching and error normalization
+Designed to reduce API boilerplate, improve maintainability, and support robust token and error handling in both client and server-side applications.
 
 ---
 
 ## ✨ Features
 
 * ✅ **Plug-and-play API client**
-* 🔐 **Token injection** via Axios interceptors
+* 🔐 **Token injection** with Axios interceptors
 * 🧱 **Modular services** (auth, user, etc.)
-* 🦼 **Auto Content-Type** for JSON and FormData
 * 🧠 **Centralized error normalization**
-* 📦 **Optional response caching**
-* 🔧 **Dynamic custom service creation**
-* 💪 **Full TypeScript support**
-* ⚡ **Custom route overrides**
-* 🌍 **Composable and extendable for all APIs**
-* 🛡️ **Unauthorized handler support via `onUnauthorized`**
-* 🌐 **SSR & Public/Private API compatibility**
-* 🧹 **Custom error handling (planned)**
-* 🔁 **Retry & timeout support (planned)**
+* 📆 **Auto Content-Type** for JSON/FormData
+* 🔧 **Dynamic custom service creation with type safety**
+* 💪 **Strong TypeScript typings with inference**
+* 🛡️ **401/403 Unauthorized interception support**
+* 🌍 **SSR & Public API compatible**
+* 🚀 **Composable with route overrides & reusable service factories**
+* 🗆️ **Built-in GET response caching (TTL-based)**
+* 🌟 **Method-specific request/response typing**
+* 🧱 **Partial service definitions for flexible extension**
+* ✏️ **Response transformation hooks per method**
 
 ---
 
-## 🗖 Installation
+## 🧱 Use Cases
+
+* ✅ Build modular auth/user services with custom routes or defaults
+* ✅ Generate lightweight API SDKs with endpoint-level control
+* ✅ Create reusable API definitions across frontend apps
+* ✅ Drop-in support for SSR and browser apps with token handling
+* ✅ Customize request/response logic with transform hooks
+* ✅ Auto-typed service factories for any RESTful APIs
+* ✅ Override routes dynamically and merge with defaults
+* ✅ Transform and shape API responses using `transformResponse`
+* ✅ Seamless fallback to low-level Axios usage when needed
+* ✅ Extend default services with typed overrides and inference
+
+---
+
+## 🵖 Installation
 
 ```bash
 npm install request-kit-client
@@ -41,7 +50,7 @@ npm install request-kit-client
 
 ---
 
-## 🔧 Quick Start
+## 🚦 Getting Started
 
 ### 1. Create an API Client
 
@@ -51,16 +60,8 @@ import { createApiClient } from "request-kit-client";
 const api = createApiClient({
   baseUrl: "https://api.example.com",
   getToken: () => localStorage.getItem("auth_token"),
-  routeOverrides: {
-    auth: {
-      login: "/v2/auth/login",
-    },
-    user: {
-      profile: "/me",
-    },
-  },
   onUnauthorized: (status) => {
-    if (status === 401 || status === 403) {
+    if ([401, 403].includes(status)) {
       localStorage.removeItem("auth_token");
       window.location.href = "/login";
     }
@@ -70,27 +71,23 @@ const api = createApiClient({
 
 ---
 
-### 2. Authentication
+### 2. Auth Service (Built-in)
 
 ```ts
 const { data, error } = await api.auth.login({ email, password });
 
-if (data) {
-  localStorage.setItem("auth_token", data.token);
-} else {
-  console.error("Login failed:", error?.message);
-}
+if (data) localStorage.setItem("auth_token", data.token);
 
 await api.auth.logout();
 ```
 
 ---
 
-### 3. User Profile
+### 3. User Service (Built-in)
 
 ```ts
-// Get current user
-const { data: user, error } = await api.user.getProfile();
+// Get profile
+const { data: user } = await api.user.getProfile();
 
 // Update profile
 await api.user.updateProfile({ name: "Jane Doe" });
@@ -98,30 +95,33 @@ await api.user.updateProfile({ name: "Jane Doe" });
 
 ---
 
-### 4. Custom API Calls
-
-Use `createCustomService()` to define your own services:
+### 4. Custom Services (Typed)
 
 ```ts
 import { createCustomService } from "request-kit-client";
 
-const weatherService = createCustomService(api.http, {
-  getWeather: {
+const productService = createCustomService(api.http, {
+  getProduct: {
     method: "get",
-    endpoint: (city: string) => `/weather/today?city=${city}`,
+    endpoint: (id: string) => `/products/${id}`,
+    responseType: {} as Product,
   },
-  postLog: {
+  createProduct: {
     method: "post",
-    endpoint: "/weather/logs",
+    endpoint: "/products",
+    requestType: {} as ProductInput,
+    responseType: {} as { id: string },
   },
 });
 
-const { data } = await weatherService.getWeather("New York");
+const { data } = await productService.getProduct("123");
 ```
 
 ---
 
-### 5. Response Caching (GET only)
+## 🔁 Caching Support
+
+GET requests support TTL-based caching:
 
 ```ts
 const { data } = await api.user.getProfile({ cacheTTL: 300000 }); // 5 mins
@@ -129,183 +129,70 @@ const { data } = await api.user.getProfile({ cacheTTL: 300000 }); // 5 mins
 
 ---
 
-## 🔐 Token Handling
+## 🧠 Response Transformation (per endpoint)
 
-Tokens are injected via the `Authorization: Bearer <token>` header automatically.
-
-Provide a `getToken` method to control the logic:
+Each service method supports a `transformResponse` hook:
 
 ```ts
-getToken: () => {
-  const token = localStorage.getItem("auth_token");
-  return token;
-}
+const userService = createUserService(http, {
+  getProfile: {
+    method: "get",
+    endpoint: "/user/me",
+    responseType: {} as UserProfile,
+    transformResponse: (data) => ({ ...data, fullName: data.name + " (user)" }),
+  },
+});
+
+const { data } = await userService.getProfile(); // data.fullName = "Jane Doe (user)"
 ```
 
 ---
 
-## ⚡ Unauthorized Handler (401/403)
+## 🛡️ Token Injection
 
-Use the `onUnauthorized` hook to define custom behavior for 401/403 responses:
+Tokens are injected automatically:
 
 ```ts
-const api = createApiClient({
-  baseUrl: "https://api.example.com",
+createApiClient({
   getToken: () => localStorage.getItem("auth_token"),
-  onUnauthorized: (status) => {
-    if (status === 401 || status === 403) {
-      localStorage.removeItem("auth_token");
-      window.location.href = "/login";
-    }
-  },
-});
-```
-
-This provides **fine-grained control** and replaces hardcoded logic.
-
----
-
-## ⚙️ SSR & Public API Compatibility
-
-You can use this client in SSR frameworks like **Next.js**:
-
-```ts
-createApiClient({
-  getToken: (ctx) => {
-    if (typeof window === "undefined") {
-      return ctx?.req?.cookies?.token ?? null;
-    }
-    return localStorage.getItem("auth_token");
-  }
-});
-```
-
-Also works without tokens for public endpoints — just omit `getToken`.
-
----
-
-## 🛠️ Advanced
-
-### Route Overrides
-
-Override any route by supplying custom paths:
-
-```ts
-routeOverrides: {
-  user: {
-    profile: "/me",
-  },
-}
-```
-
-### Low-Level HTTP Access
-
-Use direct HTTP methods when needed:
-
-```ts
-const { data, error } = await api.http.get<MyType>("/weather/today");
-```
-
----
-
-## 🔁 Retry & Timeout (Planned)
-
-Planned support for:
-
-* Per-request timeout configuration
-* Automatic retries with backoff
-* Axios instance injection
-
----
-
-## 📦 API Client Options
-
-```ts
-createApiClient({
-  baseUrl: string;                        // Required
-  getToken?: () => string | null;        // Optional
-  onUnauthorized?: (status: number) => void; // Optional
-  routeOverrides?: Partial<ApiRoutes>;   // Optional
 });
 ```
 
 ---
 
-## 🧪 Return Shape
-
-Every API call returns:
+## 🧼 Unified Error Shape
 
 ```ts
 {
-  data: T | null;
+  data: T | null,
   error: {
-    message: string;
-    statusCode?: number;
-    isNetworkError?: boolean;
-    raw?: any;
-  } | null;
+    message: string,
+    statusCode?: number,
+    isNetworkError?: boolean,
+    raw?: any
+  } | null
 }
 ```
 
-✅ Always either `data` or `error` — never both.
-
 ---
 
-## 📚 Service Methods
-
-### Auth
-
-| Method    | Description             |
-| --------- | ----------------------- |
-| login()   | Log in with credentials |
-| logout()  | Log out current user    |
-| refresh() | Refresh auth token      |
-
-### User
-
-| Method          | Description         |
-| --------------- | ------------------- |
-| getProfile()    | Fetch current user  |
-| updateProfile() | Update profile data |
-
-### Custom
-
-Define any endpoints using `createCustomService()`:
+## ⚙️ SSR Support
 
 ```ts
-const service = createCustomService(api.http, {
-  getItem: {
-    method: "get",
-    endpoint: (id: string) => `/items/${id}`,
-  },
-});
+getToken: (ctx) => {
+  if (typeof window === "undefined") {
+    return ctx?.req?.cookies?.auth_token;
+  }
+  return localStorage.getItem("auth_token");
+},
 ```
 
 ---
 
-## 🧠 Utilities
-
-### Custom Service Definition
+## 🔄 Low-level HTTP Fallback
 
 ```ts
-const customService = createCustomService(api.http, {
-  getSomething: {
-    method: "get",
-    endpoint: "/something",
-  },
-});
-```
-
-### Typed Support
-
-```ts
-import type {
-  ApiRoutes,
-  LoginRequest,
-  LoginResponse,
-  UserProfile,
-  NormalizedError,
-} from "request-kit-client";
+const { data, error } = await api.http.get<MyType>("/weather/today");
 ```
 
 ---
@@ -314,48 +201,47 @@ import type {
 
 ```
 src/
-├── http/           // axios client + wrappers
-├── services/       // auth, user, custom service builder
-├── utils/          // caching, error normalization
-├── types/          // request/response types
-├── routes/         // route mappings
-└── index.ts        // exposed entrypoint
+├── http/           # Axios wrapper
+├── services/       # Service factories (auth, user, custom)
+├── utils/          # Error, cache, helpers
+├── types/          # API types
+├── routes/         # Default routes
+└── index.ts        # SDK entrypoint
 
 tests/
-├── http/           // tests for http layer
-├── service/        // tests for service layer
-├── utils/          // tests for utility functions
-└── mock/           // reusable mocks
+├── service/        # Service tests
+├── utils/          # Utility tests
+└── mock/           # Shared mocks
 ```
 
 ---
 
-## 🚧 Roadmap
+## 🛠️ Roadmap
 
-* [x] Basic auth + user services
-* [x] Custom route overrides
-* [x] Custom dynamic API support
-* [x] Caching for GET
-* [x] SSR + token-less API support
-* [x] 401/403 handling via `onUnauthorized`
-* [ ] OAuth2 support
-* [ ] Two-Factor Auth (2FA)
-* [ ] Retry & timeout support
-* [ ] Middleware hooks (onError, on401)
-* [ ] CLI for service codegen
-* [ ] React Query/Hook integration
+### ✅ Completed
 
----
+* Core API client with Axios
+* Auth and User service generators
+* GET caching with TTL support
+* Route override support
+* SSR-friendly token resolver
+* Response transformation hooks
+* Error normalization
+* Typed custom service builder
 
-## 🧪 Local Development
+### 🧪 In Progress
 
-```bash
-npm run dev      # Start in dev mode
-npm run build    # Build package
-npm run test     # Run tests once
-npm run test:watch  # Watch mode
-npm publish      # Publish to npm
-```
+* Typed test coverage for service factories
+* Edge case handling for optional request bodies
+
+### 🔜 Planned
+
+* Retry and timeout support
+* OAuth2 support
+* Two-Factor Auth (2FA)
+* CLI for service codegen
+* React Query/Hook integration
+* Middleware hooks (onError, on401)
 
 ---
 
@@ -367,17 +253,17 @@ MIT © [Mohammed Syed Awadh](https://github.com/versatilemage)
 
 ## 🙌 Contributing
 
-Open issues, fork the repo, and submit PRs to help improve this SDK.
+1. Fork the repo
+2. Run tests: `npm run test`
+3. Submit PRs with improvements or fixes
 
 ---
 
-## ❤️ Why Use This?
+## ❤️ Why Request Kit Client?
 
-Request Kit Client helps frontend developers:
+> A modern API SDK made for DX — empowering frontend developers to ship clean, reliable, and scalable apps without boilerplate.
 
-* Remove repetitive API boilerplate
-* Handle tokens & errors automatically
-* Extend easily with custom logic
-* Work confidently with TypeScript
-
-Use it in your SaaS apps, internal tools, admin dashboards, or production-ready SPAs.
+* Clean abstractions with full control
+* Zero-runtime custom services
+* Typed and ergonomic
+* Ideal for SaaS, admin dashboards, internal tools

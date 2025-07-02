@@ -1,45 +1,80 @@
 // src/services/createCustomService.ts
 
-import { CustomServiceDefinition, WrappedHttp } from "../types";
+import { WrappedHttp } from "../types";
 
-export const createCustomService = (
+type HttpMethod = "get" | "post" | "put" | "delete";
+type EndpointFunction = (...args: any[]) => string;
+type Endpoint = string | EndpointFunction;
+
+type CustomEndpointConfig<
+  Method extends HttpMethod,
+  Res = unknown,
+  Req = unknown
+> = {
+  method: Method;
+  endpoint: Endpoint;
+  requestType?: Req;
+  responseType?: Res;
+  transformResponse?: (data: any) => any;
+};
+
+type CustomServiceDefinitionTyped = Record<
+  string,
+  CustomEndpointConfig<any, any, any>
+>;
+
+type CustomService<T extends CustomServiceDefinitionTyped> = {
+  [K in keyof T]: T[K]["method"] extends "get" | "delete"
+    ? (options?: any) => Promise<{ data: T[K]["responseType"]; error: any }>
+    : T[K]["requestType"] extends never
+      ? (options?: any) => Promise<{ data: T[K]["responseType"]; error: any }>
+      : (body: T[K]["requestType"], options?: any) => Promise<{ data: T[K]["responseType"]; error: any }>;
+};
+
+
+export const createCustomService = <
+  T extends CustomServiceDefinitionTyped
+>(
   http: WrappedHttp,
-  config: CustomServiceDefinition
-): Record<string, any> => {
-  const service: Record<string, any> = {};
+  config: T
+): CustomService<T> => {
+  const service = {} as CustomService<T>;
 
   for (const key in config) {
-    const { method, endpoint } = config[key];
+    const {
+      method,
+      endpoint,
+      transformResponse,
+    } = config[key];
 
-    service[key] = async (...args: any[]) => {
+    service[key] = (async (...args: any[]) => {
       const url = typeof endpoint === "function" ? endpoint(...args) : endpoint;
+      let response;
 
-      if (method === "get") {
-        const options = args[0];
-        return await http.get(url, options);
+      switch (method) {
+        case "get":
+          response = await http.get(url, args[0]);
+          break;
+        case "delete":
+          response = await http.delete(url, args[0]);
+          break;
+        case "post":
+          response = await http.post(url, args[0], args[1]);
+          break;
+        case "put":
+          response = await http.put(url, args[0], args[1]);
+          break;
+        default:
+          throw new Error(`Unsupported method: ${method}`);
       }
 
-      if (method === "delete") {
-        const options = args[0];
-        return await http.delete(url, options);
-      }
+      const data = transformResponse
+        ? transformResponse(response.data)
+        : response.data;
 
-      if (method === "post") {
-        const body = args[0];
-        const options = args[1];
-        return await http.post(url, body, options);
-      }
-
-      if (method === "put") {
-        const body = args[0];
-        const options = args[1];
-        return await http.put(url, body, options);
-      }
-
-      throw new Error(`Unsupported method: ${method}`);
-    };
+      return { data, error: response.error };
+    }) as any;
   }
 
   return service;
 };
-
