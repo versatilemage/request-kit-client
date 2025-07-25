@@ -7,75 +7,92 @@ import { HandleErrorOptions, NormalizedError, WrappedHttp } from "../types";
 
 const buildHeaders = (
   body: unknown,
-  headers: Record<string, string> = {}
+  localHeaders: Record<string, string> = {},
+  globalHeaders: Record<string, string> = {}
 ): Record<string, string> => {
   const isFormData =
     typeof FormData !== "undefined" && body instanceof FormData;
-  if (!isFormData && !headers["Content-Type"]) {
-    headers["Content-Type"] = "application/json";
+
+  const combined = { ...globalHeaders, ...localHeaders };
+
+  if (!isFormData && !combined["Content-Type"]) {
+    combined["Content-Type"] = "application/json";
   }
-  return headers;
+
+  return combined;
 };
+
 
 export const wrapHttp = (
   http: AxiosInstance,
   options?: HandleErrorOptions
-): WrappedHttp => ({
-  get: async <T>(url: string, opt?: { cacheTTL?: number }) => {
-    if (opt?.cacheTTL) {
-      const cached = getFromCache<T>(url);
-      if (cached) return { data: cached, error: null };
-    }
+): WrappedHttp => {
+  const globalHeaders = options?.headers ?? {};
+  const onError = options?.onError;
 
-    try {
-      const res = await http.get<T>(url);
-      if (opt?.cacheTTL) setCache(url, res.data, opt.cacheTTL);
-      return { data: res.data, error: null };
-    } catch (err) {
-      return { data: null, error: handleApiError(err, options) };
-    }
-  },
+  return {
+    get: async <T>(url: string, opt?: { cacheTTL?: number }) => {
+      if (opt?.cacheTTL) {
+        const cached = getFromCache<T>(url);
+        if (cached) return { data: cached, error: null };
+      }
 
-  post: async <T>(
-    url: string,
-    body?: unknown,
-    opt?: { headers?: Record<string, string> }
-  ) => {
-    try {
-      const headers = buildHeaders(body, opt?.headers);
-      const res = await http.post<T>(url, body, { headers });
-      return { data: res.data, error: null };
-    } catch (err) {
-      return { data: null, error: handleApiError(err, options) };
-    }
-  },
+      try {
+        const res = await http.get<T>(url, { headers: globalHeaders });
+        if (opt?.cacheTTL) setCache(url, res.data, opt.cacheTTL);
+        return { data: res.data, error: null };
+      } catch (err) {
+        onError?.(err);
+        return { data: null, error: handleApiError(err, options) };
+      }
+    },
 
-  put: async <T>(
-    url: string,
-    body?: unknown,
-    opt?: { headers?: Record<string, string> }
-  ) => {
-    try {
-      const headers = buildHeaders(body, opt?.headers);
-      const res = await http.put<T>(url, body, { headers });
-      return { data: res.data, error: null };
-    } catch (err) {
-      return { data: null, error: handleApiError(err, options) };
-    }
-  },
+    post: async <T>(
+      url: string,
+      body?: unknown,
+      opt?: { headers?: Record<string, string> }
+    ) => {
+      try {
+        const headers = buildHeaders(body, opt?.headers, globalHeaders);
+        const res = await http.post<T>(url, body, { headers });
+        return { data: res.data, error: null };
+      } catch (err) {
+        onError?.(err);
+        return { data: null, error: handleApiError(err, options) };
+      }
+    },
 
-  delete: async <T>(
-    url: string,
-    opt?: { headers?: Record<string, string> }
-  ) => {
-    try {
-      const res = await http.delete<T>(url, { headers: opt?.headers });
-      return { data: res.data, error: null };
-    } catch (err) {
-      return { data: null, error: handleApiError(err, options) };
-    }
-  },
-});
+    put: async <T>(
+      url: string,
+      body?: unknown,
+      opt?: { headers?: Record<string, string> }
+    ) => {
+      try {
+        const headers = buildHeaders(body, opt?.headers, globalHeaders);
+        const res = await http.put<T>(url, body, { headers });
+        return { data: res.data, error: null };
+      } catch (err) {
+        onError?.(err);
+        return { data: null, error: handleApiError(err, options) };
+      }
+    },
+
+    delete: async <T>(
+      url: string,
+      opt?: { headers?: Record<string, string> }
+    ) => {
+      try {
+        const headers = buildHeaders(undefined, opt?.headers, globalHeaders);
+        const res = await http.delete<T>(url, { headers });
+        return { data: res.data, error: null };
+      } catch (err) {
+        onError?.(err);
+        return { data: null, error: handleApiError(err, options) };
+      }
+    },
+  };
+};
+
 
 export const createWrappedHttpClient = (
   axios: AxiosInstance,

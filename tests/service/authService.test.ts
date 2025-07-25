@@ -1,12 +1,9 @@
-import { describe, it, expect, beforeEach } from "vitest";
+// tests/service/authService.test.ts
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createAuthService } from "../../src/services/auth";
 import { createMockHttp } from "../mock/mockHttp";
 
 let mockHttp: ReturnType<typeof createMockHttp>;
-
-beforeEach(() => {
-  mockHttp = createMockHttp();
-});
 
 const routes = {
   login: {
@@ -29,33 +26,94 @@ const routes = {
 } as const;
 
 describe("authService", () => {
-  it("should call login correctly", async () => {
-    mockHttp.post.mockResolvedValueOnce({ data: { token: "abc" }, error: null });
-
-    const service = createAuthService(mockHttp, routes);
-    const res = await service.login({ email: "test@mail.com", password: "123" });
-
-    expect(res.data).toEqual({ token: "abc" });
-    expect(mockHttp.post).toHaveBeenCalledWith("/auth/login", { email: "test@mail.com", password: "123" }, undefined);
+  beforeEach(() => {
+    mockHttp = createMockHttp();
   });
 
-  it("should call logout", async () => {
-  mockHttp.post.mockResolvedValueOnce({ data: { message: "Logged out successfully" }, error: null });
-
-  const service = createAuthService(mockHttp, routes);
-  const res = await service.logout();
-
-  expect(res.data).toEqual({ message: "Logged out successfully" });
-  expect(mockHttp.post).toHaveBeenCalledWith("/auth/logout", undefined, undefined);
-});
-
-
-  it("should call refresh with transformResponse", async () => {
-    mockHttp.post.mockResolvedValueOnce({ data: { token: "xyz" }, error: null });
-
+  it("should call login and return token", async () => {
+    mockHttp.post.mockResolvedValueOnce({
+      data: { token: "abc" },
+      error: null,
+    });
     const service = createAuthService(mockHttp, routes);
+
+    const res = await service.login({
+      email: "test@mail.com",
+      password: "123",
+    });
+
+    expect(mockHttp.post).toHaveBeenCalledWith(
+      "/auth/login",
+      { email: "test@mail.com", password: "123" },
+      undefined
+    );
+    expect(res.data).toEqual({ token: "abc" });
+    expect(res.error).toBeNull();
+  });
+
+  it("should call logout and return message", async () => {
+    mockHttp.post.mockResolvedValueOnce({
+      data: { message: "Logged out successfully" },
+      error: null,
+    });
+    const service = createAuthService(mockHttp, routes);
+
+    const res = await service.logout();
+
+    expect(mockHttp.post).toHaveBeenCalledWith(
+      "/auth/logout",
+      undefined,
+      undefined
+    );
+    expect(res.data).toEqual({ message: "Logged out successfully" });
+    expect(res.error).toBeNull();
+  });
+
+  it("should call refresh and transform response", async () => {
+    mockHttp.post.mockResolvedValueOnce({
+      data: { token: "xyz" },
+      error: null,
+    });
+    const service = createAuthService(mockHttp, routes);
+
     const res = await service.refresh();
 
+    expect(mockHttp.post).toHaveBeenCalledWith(
+      "/auth/refresh",
+      undefined,
+      undefined
+    );
     expect(res.data).toEqual({ token: "Bearer xyz" });
+    expect(res.error).toBeNull();
+  });
+
+  it("should return error when login fails", async () => {
+    const mockError = { message: "Invalid credentials" };
+    mockHttp.post.mockResolvedValueOnce({ data: null, error: mockError });
+    const service = createAuthService(mockHttp, routes);
+
+    const res = await service.login({
+      email: "fail@mail.com",
+      password: "wrong",
+    });
+
+    expect(res.data).toBeNull();
+    expect(res.error).toEqual(mockError);
+  });
+
+  it("should throw if method is missing from route definitions", async () => {
+    const partialRoutes = {
+      login: routes.login,
+    } as const;
+
+    const service = createAuthService(mockHttp, partialRoutes);
+
+    await expect(async () => {
+      await (service as any).logout();
+    }).rejects.toThrowError("logout is not defined in the service routes");
+
+    await expect(async () => {
+      await (service as any).refresh();
+    }).rejects.toThrowError("refresh is not defined in the service routes");
   });
 });

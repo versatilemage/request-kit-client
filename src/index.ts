@@ -21,22 +21,55 @@ export interface CreateApiClientConfig {
   getToken?: () => string | null;
   routeOverrides?: Partial<ApiRoutes>;
   onUnauthorized?: (status: number) => void;
+
+  // 🆕 Optional: Disable internal service creation
+  disable?: {
+    auth?: boolean;
+    user?: boolean;
+  };
+
+  // 🆕 Optional: Enable/alter internal service behavior
+  features?: {
+    loginVia?: "email" | "username" | "both";
+    enable2FA?: boolean;
+    useRefreshTokenFlow?: boolean;
+    useDefaultInterceptors?: boolean;
+  };
+
+  // 🆕 Optional global headers or error hook
+  headers?: Record<string, string>;
+  onError?: (err: unknown) => void;
 }
 
 export const createApiClient = ({
   baseUrl,
   getToken,
   routeOverrides,
+  disable,
+  features,
+  headers,
+  onUnauthorized,
+  onError,
 }: CreateApiClientConfig) => {
   const axiosInstance = createHttpClient(baseUrl, getToken);
-  const wrappedHttp = createWrappedHttpClient(axiosInstance);
+  const wrappedHttp = createWrappedHttpClient(axiosInstance, {
+    onUnauthorized,
+    headers,
+    onError,
+  });
 
   return {
-    auth: routeOverrides?.auth
+    auth: disable?.auth
+      ? undefined
+      : routeOverrides?.auth
       ? createAuthService(wrappedHttp, routeOverrides.auth)
-      : createDefaultAuthService(wrappedHttp),
+      : createDefaultAuthService(wrappedHttp, {
+          features,
+        }),
 
-    user: routeOverrides?.user
+    user: disable?.user
+      ? undefined
+      : routeOverrides?.user
       ? createUserService(wrappedHttp, routeOverrides.user)
       : createDefaultUserService(wrappedHttp),
 
@@ -45,6 +78,8 @@ export const createApiClient = ({
 };
 
 export { createCustomService } from "./services/createCustomService";
+export { createDefaultAuthService } from "./services/createDefaultAuthService";
+
 export type {
   ApiRoutes,
   LoginRequest,

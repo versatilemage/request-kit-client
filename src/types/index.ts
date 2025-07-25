@@ -68,6 +68,8 @@ export interface WrappedHttp {
 
 export type HandleErrorOptions = {
   onUnauthorized?: (status: number) => void;
+  onError?: (err: unknown) => void;
+  headers?: Record<string, string>;
 };
 
 export interface CustomServiceDefinition {
@@ -76,3 +78,6 @@ export interface CustomServiceDefinition {
     endpoint: EndpointResolver;
   };
 }
+
+export type AuthService = ReturnType<typeof import("../services/auth").createAuthService>;
+

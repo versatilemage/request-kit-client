@@ -1,6 +1,6 @@
 {
   "name": "request-kit-client",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Reusable authentication and API client",
   "main": "dist/request-kit-client.umd.js",
   "module": "dist/request-kit-client.es.js",
