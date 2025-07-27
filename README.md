@@ -2,7 +2,7 @@
 
 A flexible, TypeScript-first API client SDK that simplifies data fetching and HTTP service structure in modern frontend applications.
 
-**🌐 [View Landing Page](https://request-kit-client-landing-datk.vercel.app/)**
+**🌐 [View Landing Page](https://request-kit-client-landing.vercel.app/)**
 
 Designed to reduce API boilerplate, improve maintainability, and support robust token and error handling in both client and server-side applications.
 
