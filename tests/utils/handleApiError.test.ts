@@ -1,3 +1,4 @@
+//tests/utils/handleApiError.test.ts
 import { describe, it, expect, vi } from 'vitest';
 import { handleApiError } from '../../src/utils/handleApiError';
 import { HTTP_STATUS } from '../../src/types/statusCodes';

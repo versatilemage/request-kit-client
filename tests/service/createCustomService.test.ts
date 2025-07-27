@@ -1,3 +1,4 @@
+// tests/service/createCustomService.test.ts
 import { describe, it, expect, beforeEach, vi, type Mock } from "vitest";
 import { createCustomService } from "../../src/services/createCustomService";
 import { createMockHttp } from "../mock/mockHttp";
@@ -24,13 +25,13 @@ describe("createCustomService", () => {
     createUser: {
       method: "post",
       endpoint: "/user",
-      bodyType: {} as { name: string },
+      requestType: {} as { name: string },
       responseType: {} as { id: number }
     },
     updateUser: {
       method: "put",
       endpoint: "/user",
-      bodyType: {} as { id: number },
+      requestType: {} as { id: number },
       responseType: {} as { success: boolean }
     },
     deleteUser: {
@@ -60,11 +61,7 @@ describe("createCustomService", () => {
     const service = createCustomService(mockHttp, routes);
     const result = await service.createUser({ name: "Alice" });
     expect(result.data).toEqual({ id: 1 });
-    expect(mockHttp.post).toHaveBeenCalledWith(
-      "/user",
-      { name: "Alice" },
-      undefined
-    );
+    expect(mockHttp.post).toHaveBeenCalledWith("/user", { name: "Alice" }, undefined);
   });
 
   it("should call PUT endpoint", async () => {

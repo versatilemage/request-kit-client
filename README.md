@@ -2,7 +2,7 @@
 
 A flexible, TypeScript-first API client SDK that simplifies data fetching and HTTP service structure in modern frontend applications.
 
-\*\*🌐 \*\*[**View Landing Page**](https://request-kit-client-landing-datk.vercel.app/)
+**🌐 [View Landing Page](https://request-kit-client-landing.vercel.app/)**
 
 Designed to reduce API boilerplate, improve maintainability, and support robust token and error handling in both client and server-side applications.
 
@@ -14,16 +14,19 @@ Designed to reduce API boilerplate, improve maintainability, and support robust 
 * 🔐 **Token injection** with Axios interceptors
 * 🧱 **Modular services** (auth, user, etc.)
 * 🧠 **Centralized error normalization**
-* 📆 **Auto Content-Type** for JSON/FormData
+* 🗖️ **Auto Content-Type** for JSON/FormData
 * 🔧 **Dynamic custom service creation with type safety**
 * 💪 **Strong TypeScript typings with inference**
 * 🛡️ **401/403 Unauthorized interception support**
 * 🌍 **SSR & Public API compatible**
 * 🚀 **Composable with route overrides & reusable service factories**
-* 🗆️ **Built-in GET response caching (TTL-based)**
+* 🗶️ **Built-in GET response caching (TTL-based)**
 * 🌟 **Method-specific request/response typing**
 * 🧱 **Partial service definitions for flexible extension**
 * ✏️ **Response transformation hooks per method**
+* ⚙️ **Global header injection**
+* ⛔ **Configurable service disabling**
+* 🔄 **Global error handling hook**
 
 ---
 
@@ -36,13 +39,13 @@ Designed to reduce API boilerplate, improve maintainability, and support robust 
 * ✅ Customize request/response logic with transform hooks
 * ✅ Auto-typed service factories for any RESTful APIs
 * ✅ Override routes dynamically and merge with defaults
-* ✅ Transform and shape API responses using `transformResponse`
-* ✅ Seamless fallback to low-level Axios usage when needed
-* ✅ Extend default services with typed overrides and inference
+* ✅ Inject custom headers globally and per request
+* ✅ Enable/disable services dynamically (auth/user)
+* ✅ Handle 401s and global errors gracefully
 
 ---
 
-## 🵖 Installation
+## 🕖 Installation
 
 ```bash
 npm install request-kit-client
@@ -60,11 +63,22 @@ import { createApiClient } from "request-kit-client";
 const api = createApiClient({
   baseUrl: "https://api.example.com",
   getToken: () => localStorage.getItem("auth_token"),
+  headers: { "x-app-id": "frontend" },
   onUnauthorized: (status) => {
     if ([401, 403].includes(status)) {
       localStorage.removeItem("auth_token");
       window.location.href = "/login";
     }
+  },
+  onError: (err) => {
+    console.error("Global API Error:", err);
+  },
+  disable: {
+    user: false,
+  },
+  features: {
+    loginVia: "both",
+    enable2FA: true,
   },
 });
 ```
@@ -74,11 +88,11 @@ const api = createApiClient({
 ### 2. Auth Service (Built-in)
 
 ```ts
-const { data, error } = await api.auth.login({ email, password });
+const { data, error } = await api.auth?.login({ email, password });
 
 if (data) localStorage.setItem("auth_token", data.token);
 
-await api.auth.logout();
+await api.auth?.logout();
 ```
 
 ---
@@ -87,10 +101,10 @@ await api.auth.logout();
 
 ```ts
 // Get profile
-const { data: user } = await api.user.getProfile();
+const { data: user } = await api.user?.getProfile();
 
 // Update profile
-await api.user.updateProfile({ name: "Jane Doe" });
+await api.user?.updateProfile({ name: "Jane Doe" });
 ```
 
 ---
@@ -124,7 +138,7 @@ const { data } = await productService.getProduct("123");
 GET requests support TTL-based caching:
 
 ```ts
-const { data } = await api.user.getProfile({ cacheTTL: 300000 }); // 5 mins
+const { data } = await api.user?.getProfile({ cacheTTL: 300000 }); // 5 mins
 ```
 
 ---
@@ -150,12 +164,35 @@ const { data } = await userService.getProfile(); // data.fullName = "Jane Doe (u
 
 ## 🛡️ Token Injection
 
-Tokens are injected automatically:
+Tokens are injected automatically via `getToken()`:
 
 ```ts
 createApiClient({
   getToken: () => localStorage.getItem("auth_token"),
 });
+```
+
+---
+
+## 💥 Global Error Handling
+
+Catch errors globally for analytics or fallback UI:
+
+```ts
+createApiClient({
+  onError: (err) => {
+    console.error("Global HTTP Error:", err);
+    // Track/log/etc
+  },
+});
+```
+
+---
+
+## 🔄 Low-level HTTP Fallback
+
+```ts
+const { data, error } = await api.http.get<MyType>("/weather/today");
 ```
 
 ---
@@ -166,10 +203,10 @@ createApiClient({
 {
   data: T | null,
   error: {
-    message: string,
-    statusCode?: number,
-    isNetworkError?: boolean,
-    raw?: any
+    message: string;
+    statusCode?: number;
+    isNetworkError?: boolean;
+    raw?: any;
   } | null
 }
 ```
@@ -189,10 +226,20 @@ getToken: (ctx) => {
 
 ---
 
-## 🔄 Low-level HTTP Fallback
+## 🧰 Route Overrides & Partial Merging
+
+Override only specific fields like `endpoint` and merge with default values:
 
 ```ts
-const { data, error } = await api.http.get<MyType>("/weather/today");
+const api = createApiClient({
+  routeOverrides: {
+    auth: {
+      login: {
+        endpoint: "/v2/custom-login",
+      },
+    },
+  },
+});
 ```
 
 ---
@@ -228,13 +275,15 @@ tests/
 * Response transformation hooks
 * Error normalization
 * Typed custom service builder
+* Disable built-in services
+* Global headers and onError handler
 
 ### 🧪 In Progress
 
 * Typed test coverage for service factories
 * Edge case handling for optional request bodies
 
-### 🔜 Planned
+### 🕒 Planned
 
 * Retry and timeout support
 * OAuth2 support
@@ -242,6 +291,8 @@ tests/
 * CLI for service codegen
 * React Query/Hook integration
 * Middleware hooks (onError, on401)
+* Request deduplication for GETs
+* RBAC & Permission system integration
 
 ---
 
