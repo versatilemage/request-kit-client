@@ -62,6 +62,7 @@ export interface WrappedHttp {
 
   delete: <T>(
     url: string,
+    body?: unknown,
     options?: { headers?: Record<string, string> }
   ) => Promise<{ data: T | null; error: NormalizedError | null }>;
 }

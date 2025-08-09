@@ -79,11 +79,12 @@ export const wrapHttp = (
 
     delete: async <T>(
       url: string,
+      body?: unknown,
       opt?: { headers?: Record<string, string> }
     ) => {
       try {
-        const headers = buildHeaders(undefined, opt?.headers, globalHeaders);
-        const res = await http.delete<T>(url, { headers });
+        const headers = buildHeaders(body, opt?.headers, globalHeaders);
+        const res = await http.delete<T>(url, { data: body, headers });
         return { data: res.data, error: null };
       } catch (err) {
         onError?.(err);

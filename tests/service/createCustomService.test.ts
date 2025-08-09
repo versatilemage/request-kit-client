@@ -8,7 +8,7 @@ let mockHttp: WrappedHttp & {
   get: Mock<(url: string, options?: any) => Promise<{ data: any; error: any }>>;
   post: Mock<(url: string, body?: any, options?: any) => Promise<{ data: any; error: any }>>;
   put: Mock<(url: string, body?: any, options?: any) => Promise<{ data: any; error: any }>>;
-  delete: Mock<(url: string, options?: any) => Promise<{ data: any; error: any }>>;
+  delete: Mock<(url: string, body?: any, options?: any) => Promise<{ data: any; error: any }>>;
 };
 
 beforeEach(() => {
