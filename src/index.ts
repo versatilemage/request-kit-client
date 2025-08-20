@@ -79,6 +79,8 @@ export const createApiClient = ({
 
 export { createCustomService } from "./services/createCustomService";
 export { createDefaultAuthService } from "./services/createDefaultAuthService";
+export { createDefaultUserService } from "./services/createDefaultUserService";
+export { fetchHttp } from "./http/fetchHttp";
 
 export type {
   ApiRoutes,
