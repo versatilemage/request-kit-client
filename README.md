@@ -1,47 +1,43 @@
 # 🚀 Request Kit Client
 
-A flexible, TypeScript-first API client SDK that simplifies data fetching and HTTP service structure in modern frontend applications.
+A flexible, **TypeScript-first API client SDK** that simplifies data fetching and service structure in modern frontend applications.
 
 **🌐 [View Landing Page](https://request-kit-client-landing.vercel.app/)**
 
-Designed to reduce API boilerplate, improve maintainability, and support robust token and error handling in both client and server-side applications.
+Designed to **reduce API boilerplate**, improve maintainability, and support **robust token, error, and file upload handling** in both client and server-side apps.
 
 ---
 
 ## ✨ Features
 
-* ✅ **Plug-and-play API client**
-* 🔐 **Token injection** with Axios interceptors
-* 🧱 **Modular services** (auth, user, etc.)
-* 🧠 **Centralized error normalization**
-* 🗖️ **Auto Content-Type** for JSON/FormData
-* 🔧 **Dynamic custom service creation with type safety**
-* 💪 **Strong TypeScript typings with inference**
-* 🛡️ **401/403 Unauthorized interception support**
-* 🌍 **SSR & Public API compatible**
-* 🚀 **Composable with route overrides & reusable service factories**
-* 🗶️ **Built-in GET response caching (TTL-based)**
-* 🌟 **Method-specific request/response typing**
-* 🧱 **Partial service definitions for flexible extension**
-* ✏️ **Response transformation hooks per method**
-* ⚙️ **Global header injection**
-* ⛔ **Configurable service disabling**
-* 🔄 **Global error handling hook**
+* ✅ **Plug-and-play API client** (`createApiClient`)
+* 🔐 **Token injection** with Axios interceptors or `fetch`
+* 🧱 **Built-in modular services** (Auth, User, etc.)
+* 🔧 **Dynamic custom service creation** with **full type safety**
+* 🧠 **Centralized error normalization** → always predictable error shape
+* 🗖 **Auto Content-Type handling** (JSON, FormData, text, raw)
+* 📂 **Multipart form-data support** (file uploads, FormData auto-detection)
+* 💪 **Strong TypeScript typings with inference** (req/res typing per method)
+* 🛡 **401/403 Unauthorized interception** with global hooks
+* 🌍 **SSR & Public API compatible** (token resolvers for server & client)
+* 🚀 **Composable service factories** with **route overrides**
+* 🗶 **Built-in GET response caching (TTL-based)**
+* ✏️ **Response transformation hooks** per endpoint
+* ⚙️ **Global header injection + global error handler**
+* ⛔ **Configurable service disabling** (disable auth/user when not needed)
+* 🔄 **Low-level HTTP fallback** (`api.http.get/post/...`)
 
 ---
 
 ## 🧱 Use Cases
 
-* ✅ Build modular auth/user services with custom routes or defaults
-* ✅ Generate lightweight API SDKs with endpoint-level control
-* ✅ Create reusable API definitions across frontend apps
-* ✅ Drop-in support for SSR and browser apps with token handling
-* ✅ Customize request/response logic with transform hooks
-* ✅ Auto-typed service factories for any RESTful APIs
-* ✅ Override routes dynamically and merge with defaults
-* ✅ Inject custom headers globally and per request
-* ✅ Enable/disable services dynamically (auth/user)
-* ✅ Handle 401s and global errors gracefully
+* ✅ Build modular **Auth/User services** with custom or default routes
+* ✅ Generate lightweight, **typed API SDKs** with endpoint-level control
+* ✅ Drop-in for **SSR + browser apps** with token handling
+* ✅ Override routes dynamically & merge with defaults
+* ✅ Inject headers globally (multi-tenant apps, API keys, etc.)
+* ✅ File upload / multipart form-data support
+* ✅ Catch and normalize errors for analytics or fallback UI
 
 ---
 
@@ -55,7 +51,7 @@ npm install request-kit-client
 
 ## 🚦 Getting Started
 
-### 1. Create an API Client
+### 1. Create an API Client (Axios-powered)
 
 ```ts
 import { createApiClient } from "request-kit-client";
@@ -72,9 +68,6 @@ const api = createApiClient({
   },
   onError: (err) => {
     console.error("Global API Error:", err);
-  },
-  disable: {
-    user: false,
   },
   features: {
     loginVia: "both",
@@ -109,7 +102,7 @@ await api.user?.updateProfile({ name: "Jane Doe" });
 
 ---
 
-### 4. Custom Services (Typed)
+### 4. Custom Service (Typed + Extendable)
 
 ```ts
 import { createCustomService } from "request-kit-client";
@@ -133,71 +126,56 @@ const { data } = await productService.getProduct("123");
 
 ---
 
-## 🔁 Caching Support
-
-GET requests support TTL-based caching:
+### 5. File Uploads (FormData / Multipart)
 
 ```ts
-const { data } = await api.user?.getProfile({ cacheTTL: 300000 }); // 5 mins
+const fd = new FormData();
+fd.append("file", fileInput.files[0]);
+fd.append("meta", JSON.stringify({ uploadedBy: "admin" }));
+
+const { data, error } = await api.http.post<{ url: string }>("/upload", fd);
+
+if (error) console.error("Upload failed", error);
+else console.log("File uploaded at", data?.url);
+```
+
+> `FormData` is auto-detected — no need to manually set `Content-Type`.
+
+---
+
+## 🔁 Caching Support
+
+```ts
+// Cache GET for 5 minutes
+const { data } = await api.user?.getProfile({ cacheTTL: 300000 });
 ```
 
 ---
 
-## 🧠 Response Transformation (per endpoint)
-
-Each service method supports a `transformResponse` hook:
+## 🧠 Response Transformation
 
 ```ts
-const userService = createUserService(http, {
+const userService = createCustomService(api.http, {
   getProfile: {
     method: "get",
     endpoint: "/user/me",
     responseType: {} as UserProfile,
-    transformResponse: (data) => ({ ...data, fullName: data.name + " (user)" }),
+    transformResponse: (data) => ({
+      ...data,
+      fullName: data.name + " (user)",
+    }),
   },
 });
 
-const { data } = await userService.getProfile(); // data.fullName = "Jane Doe (user)"
+const { data } = await userService.getProfile();
+console.log(data?.fullName); // "Jane Doe (user)"
 ```
 
 ---
 
-## 🛡️ Token Injection
+## 🛡️ Error Handling
 
-Tokens are injected automatically via `getToken()`:
-
-```ts
-createApiClient({
-  getToken: () => localStorage.getItem("auth_token"),
-});
-```
-
----
-
-## 💥 Global Error Handling
-
-Catch errors globally for analytics or fallback UI:
-
-```ts
-createApiClient({
-  onError: (err) => {
-    console.error("Global HTTP Error:", err);
-    // Track/log/etc
-  },
-});
-```
-
----
-
-## 🔄 Low-level HTTP Fallback
-
-```ts
-const { data, error } = await api.http.get<MyType>("/weather/today");
-```
-
----
-
-## 🧼 Unified Error Shape
+All responses have a **unified shape**:
 
 ```ts
 {
@@ -209,6 +187,17 @@ const { data, error } = await api.http.get<MyType>("/weather/today");
     raw?: any;
   } | null
 }
+```
+
+Global error hook:
+
+```ts
+createApiClient({
+  onError: (err) => {
+    console.error("Global HTTP Error:", err);
+    // Track/log/etc
+  },
+});
 ```
 
 ---
@@ -226,39 +215,20 @@ getToken: (ctx) => {
 
 ---
 
-## 🧰 Route Overrides & Partial Merging
-
-Override only specific fields like `endpoint` and merge with default values:
-
-```ts
-const api = createApiClient({
-  routeOverrides: {
-    auth: {
-      login: {
-        endpoint: "/v2/custom-login",
-      },
-    },
-  },
-});
-```
-
----
-
 ## 📁 Folder Structure
 
 ```
 src/
-├── http/           # Axios wrapper
+├── http/           # Axios + Fetch wrappers
 ├── services/       # Service factories (auth, user, custom)
 ├── utils/          # Error, cache, helpers
 ├── types/          # API types
-├── routes/         # Default routes
 └── index.ts        # SDK entrypoint
 
 tests/
-├── service/        # Service tests
+├── services/       # Service tests
 ├── utils/          # Utility tests
-└── mock/           # Shared mocks
+└── mocks/          # Shared mocks
 ```
 
 ---
@@ -267,32 +237,32 @@ tests/
 
 ### ✅ Completed
 
-* Core API client with Axios
+* Core API client (Axios + Fetch)
 * Auth and User service generators
-* GET caching with TTL support
-* Route override support
+* FormData / multipart uploads
+* GET caching (TTL-based)
+* Route overrides
 * SSR-friendly token resolver
 * Response transformation hooks
 * Error normalization
 * Typed custom service builder
 * Disable built-in services
-* Global headers and onError handler
+* Global headers & error hooks
 
 ### 🧪 In Progress
 
-* Typed test coverage for service factories
-* Edge case handling for optional request bodies
+* Test coverage for service factories
+* Edge cases for optional request bodies
 
 ### 🕒 Planned
 
-* Retry and timeout support
+* Retry & timeout support
 * OAuth2 support
 * Two-Factor Auth (2FA)
 * CLI for service codegen
 * React Query/Hook integration
-* Middleware hooks (onError, on401)
-* Request deduplication for GETs
-* RBAC & Permission system integration
+* Request deduplication
+* RBAC/permission integration
 
 ---
 
