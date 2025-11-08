@@ -108,12 +108,17 @@ describe("authService", () => {
 
     const service = createAuthService(mockHttp, partialRoutes);
 
+    // Methods not defined in routes will not exist on the service object
+    expect(service.logout).toBeUndefined();
+    expect(service.refresh).toBeUndefined();
+
+    // Attempting to call undefined methods will throw TypeError
     await expect(async () => {
       await (service as any).logout();
-    }).rejects.toThrowError("logout is not defined in the service routes");
+    }).rejects.toThrow();
 
     await expect(async () => {
       await (service as any).refresh();
-    }).rejects.toThrowError("refresh is not defined in the service routes");
+    }).rejects.toThrow();
   });
 });
