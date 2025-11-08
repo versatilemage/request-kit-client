@@ -39,6 +39,10 @@
   ],
   "author": "Mohammed Syed Awadh",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/versatilemage/request-kit-client.git"
+  },
   "peerDependencies": {
     "axios": "^1.6.0"
   },
