@@ -26,6 +26,7 @@ Designed to **reduce API boilerplate**, improve maintainability, and support **r
 * ⚙️ **Global header injection + global error handler**
 * ⛔ **Configurable service disabling** (disable auth/user when not needed)
 * 🔄 **Low-level HTTP fallback** (`api.http.get/post/...`)
+* 🔗 **Native query parameter support** for all HTTP methods
 
 ---
 
@@ -38,6 +39,7 @@ Designed to **reduce API boilerplate**, improve maintainability, and support **r
 * ✅ Inject headers globally (multi-tenant apps, API keys, etc.)
 * ✅ File upload / multipart form-data support
 * ✅ Catch and normalize errors for analytics or fallback UI
+* ✅ Query parameters for filtering, pagination, and API options
 
 ---
 
@@ -152,6 +154,44 @@ const { data } = await api.user?.getProfile({ cacheTTL: 300000 });
 
 ---
 
+## 🔗 Query Parameters
+
+Native support for query parameters across all HTTP methods:
+
+```ts
+// GET with query params
+const { data } = await api.http.get<User[]>("/users", {
+  params: { page: 1, limit: 10, active: true },
+  cacheTTL: 300000, // Cache key includes query params
+});
+
+// POST with query params
+const { data } = await api.http.post<User>("/users", { name: "John" }, {
+  params: { filter: "active" },
+});
+
+// PUT with query params
+const { data } = await api.http.put<User>("/users/123", { name: "Jane" }, {
+  params: { version: 2 },
+});
+
+// DELETE with query params
+const { data } = await api.http.delete<{ deleted: boolean }>("/users/123", undefined, {
+  params: { force: true },
+});
+```
+
+**Features:**
+* ✅ Type-safe query parameters (`string | number | boolean`)
+* ✅ Automatic null/undefined filtering
+* ✅ Cache-aware (different params = different cache entries)
+* ✅ Works with both Axios and Fetch implementations
+* ✅ SSR-compatible
+
+> **Note:** Query parameters are automatically included in cache keys, so `/users?page=1` and `/users?page=2` are cached separately.
+
+---
+
 ## 🧠 Response Transformation
 
 ```ts
@@ -248,6 +288,7 @@ tests/
 * Typed custom service builder
 * Disable built-in services
 * Global headers & error hooks
+* Native query parameter support
 
 ### 🧪 In Progress
 

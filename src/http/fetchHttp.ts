@@ -37,13 +37,52 @@ async function parseResponse<T>(res: Response): Promise<T | null> {
   }
 }
 
+/**
+ * Builds a URL with query parameters
+ */
+function buildUrlWithParams(
+  url: string,
+  params?: Record<string, string | number | boolean | null | undefined>
+): string {
+  if (!params || Object.keys(params).length === 0) {
+    return url;
+  }
+
+  // Check if URL is absolute
+  const isAbsolute = url.startsWith("http://") || url.startsWith("https://");
+  
+  // For absolute URLs, use URL constructor directly
+  if (isAbsolute) {
+    const urlObj = new URL(url);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value != null) {
+        urlObj.searchParams.append(key, String(value));
+      }
+    });
+    return urlObj.toString();
+  }
+
+  // For relative URLs, build query string manually
+  const queryString = Object.entries(params)
+    .filter(([, value]) => value != null)
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+    .join("&");
+
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}${queryString}`;
+}
+
 async function doFetch<T>(
   method: "GET" | "POST" | "PUT" | "DELETE",
   url: string,
   body?: unknown,
-  options?: { headers?: Record<string, string> }
+  options?: {
+    headers?: Record<string, string>;
+    params?: Record<string, string | number | boolean | null | undefined>;
+  }
 ): Promise<{ data: T | null; error: NormalizedError | null }> {
   const headers: Record<string, string> = { ...(options?.headers ?? {}) };
+  const finalUrl = buildUrlWithParams(url, options?.params);
 
   let payload: BodyInit | undefined = undefined;
 
@@ -64,7 +103,7 @@ async function doFetch<T>(
   }
 
   try {
-    const res = await fetch(url, { method, headers, body: payload });
+    const res = await fetch(finalUrl, { method, headers, body: payload });
 
     const data = await parseResponse<T>(res);
 
@@ -79,20 +118,48 @@ async function doFetch<T>(
 }
 
 export const fetchHttp: WrappedHttp = {
-  get: <T>(url: string /*, options?: { cacheTTL?: number }*/) => {
+  get: <T>(
+    url: string,
+    options?: {
+      cacheTTL?: number;
+      params?: Record<string, string | number | boolean | null | undefined>;
+      headers?: Record<string, string>;
+    }
+  ) => {
     // cacheTTL can be handled by your own layer if desired
-    return doFetch<T>("GET", url);
+    return doFetch<T>("GET", url, undefined, options);
   },
 
-  post: <T>(url: string, body?: unknown, options?: { headers?: Record<string, string> }) => {
+  post: <T>(
+    url: string,
+    body?: unknown,
+    options?: {
+      headers?: Record<string, string>;
+      params?: Record<string, string | number | boolean | null | undefined>;
+    }
+  ) => {
     return doFetch<T>("POST", url, body, options);
   },
 
-  put:  <T>(url: string, body?: unknown, options?: { headers?: Record<string, string> }) => {
+  put: <T>(
+    url: string,
+    body?: unknown,
+    options?: {
+      headers?: Record<string, string>;
+      params?: Record<string, string | number | boolean | null | undefined>;
+    }
+  ) => {
     return doFetch<T>("PUT", url, body, options);
   },
 
-  delete: <T>(url: string, body?: unknown, options?: { headers?: Record<string, string> }) => {
+  delete: <T>(
+    url: string,
+    body?: unknown,
+    options?: {
+      headers?: Record<string, string>;
+      params?: Record<string, string | number | boolean | null | undefined>;
+    }
+  ) => {
     return doFetch<T>("DELETE", url, body, options);
   },
 };
