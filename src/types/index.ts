@@ -45,25 +45,38 @@ export interface ApiRoutes {
 export interface WrappedHttp {
   get: <T>(
     url: string,
-    options?: { cacheTTL?: number }
+    options?: { 
+      cacheTTL?: number;
+      params?: Record<string, string | number | boolean | null | undefined>;
+      headers?: Record<string, string>;
+    }
   ) => Promise<{ data: T | null; error: NormalizedError | null }>;
 
   post: <T>(
     url: string,
     body?: unknown,
-    options?: { headers?: Record<string, string> }
+    options?: { 
+      headers?: Record<string, string>;
+      params?: Record<string, string | number | boolean | null | undefined>;
+    }
   ) => Promise<{ data: T | null; error: NormalizedError | null }>;
 
   put: <T>(
     url: string,
     body?: unknown,
-    options?: { headers?: Record<string, string> }
+    options?: { 
+      headers?: Record<string, string>;
+      params?: Record<string, string | number | boolean | null | undefined>;
+    }
   ) => Promise<{ data: T | null; error: NormalizedError | null }>;
 
   delete: <T>(
     url: string,
     body?: unknown,
-    options?: { headers?: Record<string, string> }
+    options?: { 
+      headers?: Record<string, string>;
+      params?: Record<string, string | number | boolean | null | undefined>;
+    }
   ) => Promise<{ data: T | null; error: NormalizedError | null }>;
 }
 
